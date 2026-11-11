@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Territorios sin cartografiar — Memoria del TIM</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; line-height: 1.65; max-width: 820px; margin: 0 auto; padding: 24px 16px 64px; color: #1f2328; }
+  header { border-bottom: 2px solid #0969da; padding-bottom: 12px; margin-bottom: 24px; }
+  h1 { color: #0969da; margin-bottom: 4px; }
+  h2 { border-bottom: 1px solid #d0d7de; padding-bottom: 4px; margin-top: 36px; }
+  img { max-width: 100%; height: auto; border: 1px solid #d0d7de; border-radius: 6px; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92em; }
+  th, td { border: 1px solid #d0d7de; padding: 6px 9px; text-align: left; }
+  th { background: #f6f8fa; }
+  blockquote { border-left: 4px solid #0969da; margin: 0; padding: 4px 16px; color: #444; }
+  em { color: #57606a; }
+  a { color: #0969da; }
+  code { background: #f6f8fa; padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  footer { margin-top: 48px; border-top: 1px solid #d0d7de; padding-top: 12px; color: #57606a; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<h1 id="territorios-sin-cartografiar">Territorios sin cartografiar</h1>
+<p><strong>Memoria del Trabajo Integrador del Módulo — Actualización
+Técnica y Herramientas Digitales</strong></p>
+<ul>
+<li><strong>Autor:</strong> Eugenio Torres Flawiá</li>
+<li><strong>Carrera:</strong> Maestría en Humanidades Digitales
+(UNTREF)</li>
+<li><strong>Docente responsable:</strong> Romina De León</li>
+<li><strong>Entrega:</strong> noviembre de 2026 · Repositorio: <a
+href="https://github.com/EugenioTorresFlawia/territorios-sin-cartografiar">github.com/EugenioTorresFlawia/territorios-sin-cartografiar</a></li>
+<li><strong>Sitio (GitHub Pages):</strong> <a
+href="https://eugeniotorresflawia.github.io/territorios-sin-cartografiar/">eugeniotorresflawia.github.io/territorios-sin-cartografiar</a></li>
+</ul>
+<hr />
+<h2 id="1-delimitación-del-objeto-de-estudio">1. Delimitación del objeto
+de estudio</h2>
+<p>Mi pregunta de investigación es qué les ocurre a las formas
+reconocibles cuando siguen funcionando después de perder su capacidad de
+orientarnos. La investigación mayor de la que este trabajo forma parte
+—<em>En el umbral de la sensibilidad Weird</em>— teoriza esa operación
+en la narrativa argentina y latinoamericana contemporánea mediante las
+categorías de <strong>umbral</strong>, <strong>entropía
+narrativa</strong> y <strong>no-colapso</strong>.</p>
+<p>Este TIM retoma la devolución del Trabajo Práctico del primer
+cuatrimestre e invierte las jerarquías del anteproyecto: la muestra ya
+no es la infraestructura técnica sino el corpus crítico-literario, y la
+pregunta literaria interroga a las herramientas — no al revés. El
+contacto empírico con los datos produjo dos ajustes adicionales: la
+datificación y la normalización pasaron al centro del trabajo (el
+<em>fine-tuning</em> de modelos de lenguaje queda como horizonte de la
+tesis, no como fase de este módulo), y el estado material de los
+archivos —ruido de OCR, procedencias heterogéneas— dejó de ser un
+problema previo al análisis para volverse parte del objeto
+analizado.</p>
+<p>El corpus de la muestra reúne cinco ficciones de tres autores
+centrales de la investigación:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Texto</th>
+<th>Autor/a</th>
+<th>Tokens (Voyant)</th>
+<th>Estado material</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><em>El conserje y la eternidad</em></td>
+<td>Ricardo Romero</td>
+<td>35.021</td>
+<td>OCR de buena calidad, paratexto recortado</td>
+</tr>
+<tr class="even">
+<td><em>Territorios sin cartografiar</em></td>
+<td>Kike Ferrari</td>
+<td>30.566</td>
+<td>OCR con daño sistemático, reparado parcialmente</td>
+</tr>
+<tr class="odd">
+<td><em>La habitación del presidente</em></td>
+<td>Ricardo Romero</td>
+<td>12.121</td>
+<td>OCR de buena calidad, paratexto recortado</td>
+</tr>
+<tr class="even">
+<td>«El patio del vecino»</td>
+<td>Mariana Enríquez</td>
+<td>7.123</td>
+<td>Nacido digital (.txt original)</td>
+</tr>
+<tr class="odd">
+<td>«La casa de Adela»</td>
+<td>Mariana Enríquez</td>
+<td>4.157</td>
+<td>Nacido digital (versión web); reemplaza a un OCR dañado</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-flujo-de-trabajo-digital">2. Flujo de trabajo digital</h2>
+<p>El pipeline completo, con cada herramienta elegida por una razón
+explícita:</p>
+<ol type="1">
+<li><strong>Digitalización y transcripción (OCR/HTR):</strong>
+conversión de las fuentes a texto plano UTF-8; reparación manual de
+truncamientos y palabras cortadas. Texto plano como formato de base por
+durabilidad y portabilidad (computación mínima).</li>
+<li><strong>Estructuración y limpieza (OpenRefine):</strong> dataset
+normalizado en <code>data/clean/</code>, con el historial completo de
+operaciones exportado como
+<code>historial_openrefine_corpus_weird.json</code> — las reglas
+aplicadas no se describen: se publican en formato re-ejecutable.</li>
+<li><strong>Lectura distante (Voyant Tools, mirror SADiLaR):</strong>
+exploración de frecuencias, tendencias y contextos con una lista de
+palabras vacías curada para el proyecto (302 términos), que incorpora el
+voseo rioplatense y <strong>preserva deliberadamente</strong> los
+indefinidos (<em>algo</em>, <em>nada</em>, <em>nadie</em>,
+<em>alguien</em>) y la deixis temporal: donde la indeterminación es
+tema, su frecuencia es señal y no ruido. Síntesis en
+<code>media/Reporte_U5_Voyant_UmbralWeird_V1.pdf</code>.</li>
+<li><strong>Procesamiento reproducible (R: tidyverse/tidytext):</strong>
+script <code>scripts/analisis_textual_corpus_weird.Rmd</code> —
+frecuencias, TF-IDF por obra, leyes de Zipf y Heaps, y una prueba
+estilométrica (Delta de Burrows). Aplica <strong>la misma lista de
+stopwords que Voyant</strong> para que el contraste entre herramientas
+sea limpio, y exporta sus gráficos a <code>media/</code>.</li>
+<li><strong>Trazabilidad (Git/GitHub):</strong> historial de commits que
+registra el avance real del trabajo, decisiones y correcciones
+incluidas, como genealogía de las decisiones metodológicas.</li>
+<li><strong>Publicación (GitHub Pages):</strong> despliegue del informe
+como sitio estático (<code>index.html</code>), sin servidores ni
+dependencias de compilación, según el enfoque de computación
+mínima.</li>
+</ol>
+<h2 id="3-análisis-de-resultados-exploratorios">3. Análisis de
+resultados exploratorios</h2>
+<h3 id="31-dimensión-textual">3.1. Dimensión textual</h3>
+<p><strong>El contraste entre herramientas.</strong> Sobre los mismos
+archivos y con la misma lista de stopwords, Voyant y R arrojan conteos
+distintos: 35.021 contra 32.833 tokens para <em>El conserje</em>, 30.566
+contra 28.688 para <em>Territorios</em>, 12.121 contra 11.448 para
+<em>La habitación</em>, 7.123 contra 6.696 para <em>El patio</em>, 4.157
+contra 3.953 para <em>Adela</em>. La divergencia es sistemática (5–6%,
+siempre en la misma dirección) y se explica por decisiones de
+preprocesamiento: tokenización diferente y la limpieza adicional del
+script en R (remoción de dígitos y de tokens residuales de un carácter).
+La lección metodológica es doble: ninguna cifra absoluta es "el" tamaño
+del texto — depende del instrumento —, pero la <strong>forma</strong> de
+los resultados (rankings, distribuciones, perfiles por obra) se conserva
+entre herramientas. Lo robusto no es el número sino la estructura.</p>
+<p><strong>Frecuencias: la casa y la indeterminación.</strong> Con las
+vacías filtradas, el término más frecuente del corpus es <em>casa</em>
+(~205 ocurrencias) y el segundo es <em>nada</em> (~193); los acompañan
+<em>puerta</em>, <em>piso</em>, <em>habitación</em> (arquitectura
+doméstica), <em>algo</em> y <em>nadie</em> (los indefinidos
+preservados), <em>después</em>, <em>ahora</em>, <em>entonces</em>,
+<em>siempre</em>, <em>nunca</em> (deixis temporal) y <em>ojos</em>,
+<em>noche</em>, <em>luz</em>, <em>cara</em> (condiciones de
+visibilidad). La convivencia estadística entre insistencia espacial e
+indeterminación es una entrada cuantitativa a mi concepto de umbral: el
+espacio sigue siendo reconocible mientras su capacidad de garantizar
+continuidad queda bajo sospecha — la casa conserva las paredes; el plano
+ya no garantiza una salida. Voyant agrega un dato que las stopwords
+ocultan: la negación <em>no</em> registra 1.652 ocurrencias en el corpus
+crudo, y el ritmo sintáctico diferencia respiraciones (oración media de
+9,9 palabras en <em>El conserje</em> contra 17,0 en <em>El
+patio</em>).</p>
+<p><img src="media/r_frecuencias_corpus.png"
+alt="Palabras más frecuentes del corpus sin palabras vacías" />
+<em>Figura 1. Frecuencias del corpus sin palabras vacías (R, tidytext).
+Elaboración propia.</em></p>
+<p><strong>TF-IDF y estilometría.</strong> El vocabulario distintivo de
+cada obra perfila sus procedimientos (en <em>La habitación</em>, la
+arquitectura como procedimiento: <em>altillo</em>, <em>recibidor</em>;
+en <em>Adela</em>, consumos culturales, objetos, corporalidad), y el
+Delta de Burrows produce el resultado más consistente del análisis:
+<strong>dos pares de vecinos mutuos que coinciden con la
+autoría</strong> (Adela–Patio: Δ 1,105; Conserje–Habitación: Δ 0,941),
+pese a extensiones muy desiguales dentro de cada par. Las 150 palabras
+funcionales más frecuentes captan regularidades de la mano autoral, lo
+que precisa mi hipótesis: la sensibilidad weird opera como construcción
+transversal que no borra la firma de cada autor. Las leyes de Zipf
+(pendiente −0,978 del corpus completo, cercana al canon) y de Heaps
+completan el cuadro con una cautela central desarrollada en §4. <img
+src="media/r_tfidf_por_obra.png"
+alt="Términos más distintivos de cada obra según TF-IDF" /> <em>Figura
+2. TF-IDF por obra: lo distintivo de cada territorio narrativo.
+Elaboración propia.</em></p>
+<p><img src="media/r_zipf.png" alt="Ley de Zipf en el corpus weird" />
+<em>Figura 3. Ley de Zipf con y sin palabras vacías. Elaboración
+propia.</em></p>
+<p>El detalle completo, con sus interpretaciones y sus límites, está en
+el documento tejido: <a
+href="scripts/analisis_textual_corpus_weird.html"><code>scripts/analisis_textual_corpus_weird.html</code></a>.</p>
+<h3 id="32-dimensión-espacial">3.2. Dimensión espacial</h3>
+<p>La narrativa georreferenciada del proyecto — <em>Territorios sin
+cartografiar. Cinco umbrales del weird argentino</em> (StoryMapJS,
+actividad de Historias Visuales) — se presenta en estado de
+<strong>prototipo</strong>. Su estructura está definida en siete
+filminas: una portada con el argumento cartográfico, una parada por obra
+y un cierre orientado al trabajo final. El prototipo permite recorrer la
+portada — que fija la tesis sobre el <em>Plano de Buenos Aires y
+alrededores</em> de Carlos de Chapeaurouge (1909, David Rumsey Map
+Collection), un catastro que pretende registrarlo todo, desmentido por
+el corpus — y la primera parada, «La casa de Adela», anclada en Lanús
+con verificación textual en el propio cuento («nuestro barrio gris de
+Lanús»). Quedan pendientes las paradas restantes y la publicación de una
+versión navegable; al cierre de esta memoria el prototipo no cuenta con
+un enlace público, por lo que no se consigna. Su criterio cartográfico —
+el marcador identifica el territorio narrativo, no la ubicación real de
+una casa — y su paradoja constitutiva (la herramienta obliga a fijar
+coordenadas; el corpus las desborda) son el aporte conceptual de esta
+dimensión: en cada punto del mapa, el relato abre un umbral donde la
+coordenada deja de garantizar el lugar.</p>
+<h2 id="4-registro-de-límites-y-crítica-digital">4. Registro de límites
+y crítica digital</h2>
+<p><strong>Derechos de autor contra apertura de datos.</strong> Las
+cinco obras están bajo derechos vigentes: publicar los textos completos
+en un repositorio abierto sería republicación no autorizada.
+<code>data/raw/</code> contiene por eso <strong>fragmentos de
+muestra</strong> bajo el umbral del derecho de cita (art. 10, Ley
+11.723), con la decisión documentada en
+<code>data/raw/NOTA_METODOLOGICA.md</code>; los textos íntegros
+permanecen en el entorno local, excluidos del versionado mediante
+<code>.gitignore</code>. La reproducibilidad pública se sostiene con
+derivados no consumibles (dataset normalizado, historial de OpenRefine,
+stopwords, metadatos). La tensión entre la ciencia abierta que la
+cátedra promueve y el régimen de propiedad del corpus contemporáneo no
+es un trámite: es un límite estructural de las humanidades digitales
+sobre literatura viva, y este repositorio lo exhibe en lugar de
+disimularlo.</p>
+<p><strong>La materialidad del archivo como variable.</strong> El TF-IDF
+detectó formas rotas de OCR (<em>dde</em>) entre los términos
+"distintivos" de <em>Territorios</em>: la singularidad estadística
+también puede proceder del deterioro del archivo, y el procedimiento no
+distingue origen narrativo de origen técnico. La misma incertidumbre
+alcanza a la ley de Heaps: <em>Territorios</em> muestra más vocabulario
+y mayor β que <em>El conserje</em> a tamaño comparable, pero cada
+variante defectuosa computa como palabra nueva, de modo que no puede
+atribuirse la diferencia al estilo sin antes separar texto de
+digitalización. En ambos casos el límite es productivo: los métodos
+cuantitativos funcionaron como <strong>auditoría de la
+digitalización</strong>, y la comprobación pendiente queda formulada
+(revisar formas de baja frecuencia; comparar segmentos de igual longitud
+con limpieza común).</p>
+<p><strong>Lo que la datificación pierde.</strong> El Sumario informa
+magnitudes; no registra aquello que mi marco necesita observar: cómo una
+misma superficie narrativa admite versiones incompatibles sin que
+ninguna se imponga (no-colapso), ni qué cambia en la posición del lector
+aun cuando llega una explicación (irreversibilidad). Mantener esa
+diferencia de escala — qué aporta el cálculo, dónde comienza la lectura
+conceptual — es la condición de uso honesto de estas herramientas.</p>
+<h2 id="5-proyección-metodológica">5. Proyección metodológica</h2>
+<p>Este esquema preliminar es el insumo directo del Trabajo Final de
+Maestría. Quedan establecidos: un corpus datificado con su cadena de
+custodia documentada; un pipeline reproducible de lectura distante con
+filtros curados teóricamente; una prueba estilométrica replicable; y un
+repositorio público como infraestructura de trazabilidad. Sobre esa
+base, la tesis proyecta la instanciación del marco conceptual en la
+cadena documental, con el ajuste fino de modelos de lenguaje (ORPO/QLoRA
+sobre <em>Umbral Weird</em>) como horizonte — ahora con la lección de
+este módulo incorporada: antes de entrenar ningún modelo, la pregunta
+crítica debe gobernar la arquitectura técnica, y el estado material de
+los datos condiciona todo lo que se construya sobre ellos.</p>
+<h2 id="6-acceso-al-código-y-datos-abiertos">6. Acceso al código y datos
+abiertos</h2>
+<p>Repositorio público: <strong><a
+href="https://github.com/EugenioTorresFlawia/territorios-sin-cartografiar">github.com/EugenioTorresFlawia/territorios-sin-cartografiar</a></strong>
+— estructura: <code>data/raw/</code> (fragmentos de muestra + nota
+metodológica), <code>data/clean/</code> (dataset normalizado, historial
+OpenRefine, metadatos, stopwords), <code>scripts/</code> (R Markdown
+reproducible y su HTML), <code>media/</code> (gráficos R, capturas y
+reporte Voyant). Los materiales propios se publican en abierto; los
+textos del corpus, en la medida que el derecho de cita permite.</p>
+<h2 id="7-bibliografía">7. Bibliografía</h2>
+<p>Burrows, J. (2002). 'Delta': a Measure of Stylistic Difference and a
+Guide to Likely Authorship. <em>Literary and Linguistic Computing</em>,
+17(3), 267–287.</p>
+<p>De León, R. (2026). Materiales del Módulo de Actualización Técnica y
+Herramientas Digitales (Unidades 1–8). UNTREF, Maestría en Humanidades
+Digitales.</p>
+<p>Gil, A. (2019). Minimal Computing: A Digital Humanist's Philosophy.
+En M. K. Gold y L. F. Klein (Eds.), <em>Debates in the Digital
+Humanities 2019</em>. University of Minnesota Press.</p>
+<p>Ley 11.723 de Régimen Legal de la Propiedad Intelectual (Argentina),
+art. 10.</p>
+<p>Mosteller, F., &amp; Wallace, D. L. (1963). Inference in an
+Authorship Problem. <em>Journal of the American Statistical
+Association</em>, 58(302), 275–309.</p>
+<p>R Core Team (2026). <em>R: A Language and Environment for Statistical
+Computing</em> (v. 4.6). R Foundation for Statistical Computing.</p>
+<p>Sano, Y., Takayasu, H., &amp; Takayasu, M. (2012). Zipf's Law and
+Heaps' Law Can Predict the Size of Potential Words. <em>Progress of
+Theoretical Physics Supplement</em>, 194, 202–209.</p>
+<p>Silge, J., &amp; Robinson, D. (2017). <em>Text Mining with R: A Tidy
+Approach</em>. O'Reilly.</p>
+<p>Sinclair, S., &amp; Rockwell, G. (2026). <em>Voyant Tools</em> (v.
+2.6.21) [mirror SADiLaR].</p>
+<h2 id="8-declaración-de-asistencia-algorítmica">8. Declaración de
+Asistencia Algorítmica</h2>
+<p>Para este trabajo se utilizó <strong>Claude (Anthropic,
+2026)</strong>, vía claude.ai, con los siguientes usos: acompañamiento
+paso a paso en la sintaxis de Git/GitHub y depuración de sus errores;
+armado de la estructura del repositorio; adaptación del script R de la
+ejercitación de la Unidad 2 al corpus propio (rutas, lista de stopwords,
+exportación de gráficos); generación de los fragmentos de muestra y
+borrador de la nota metodológica según criterios definidos por el autor;
+verificación de resultados contra el repositorio público; y ensamblado
+de esta memoria a partir de textos interpretativos, decisiones y
+materiales previos del autor. No se utilizaron otras herramientas de
+inteligencia artificial generativa en la elaboración de este trabajo.
+Las interpretaciones de los resultados, la reflexión crítica y las
+decisiones metodológicas son de autoría propia; todo borrador asistido
+fue revisado y editado antes de su incorporación. La información
+cuantitativa fue verificada contra las salidas efectivas de R y de
+Voyant Tools.</p>
+<p>Referencia: Anthropic (2026). <em>Claude</em> [modelo de lenguaje].
+<a href="https://claude.ai">https://claude.ai</a> — Acceso: 11 de
+noviembre de 2026.</p>
+
+<footer>
+<p>Maestría en Humanidades Digitales (UNTREF) — Módulo de Actualización Técnica y Herramientas Digitales. Sitio estático publicado con GitHub Pages según el enfoque de computación mínima.</p>
+</footer>
+</body>
+</html>
