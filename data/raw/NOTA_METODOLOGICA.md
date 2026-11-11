@@ -21,7 +21,3 @@ Los fragmentos permiten auditar el **formato, la procedencia y el estado efectiv
 El análisis computacional (exploración en Voyant Tools, procesamiento en R) se realizó sobre los textos íntegros, que permanecen en el entorno local de trabajo. La reproducibilidad pública se preserva mediante los datos derivados no consumibles alojados en `data/clean/`: el dataset normalizado con OpenRefine, su historial completo de operaciones (`historial_openrefine_corpus_weird.json`), los metadatos del corpus y la lista de stopwords aplicada (`stopwords_UmbralWeird_v2_completa.txt`). Estos derivados permiten auditar el proceso de datificación sin exponer las obras.
 
 La tensión entre la apertura de datos que promueve la ciencia abierta y el régimen de propiedad intelectual del corpus literario contemporáneo se discute en la memoria del trabajo (sección «Registro de límites y crítica digital»).
-
----
-
-*Redacción asistida con Claude (Anthropic, 2026); selección de criterios, revisión y edición final del autor.*
