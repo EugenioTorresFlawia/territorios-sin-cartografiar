@@ -383,12 +383,23 @@ corpus.
 
 ## 6. Conclusiones
 
-> **[COMPLETAR tras tejer — es la sección de autoría plena]** Tres preguntas
-> que el TIM espera ver respondidas con estos resultados: (1) ¿qué muestra la
-> lectura distante del corpus weird que la lectura cercana no había
-> formalizado?; (2) ¿en qué coinciden y en qué divergen R y Voyant sobre el
-> mismo corpus con el mismo filtro?; (3) ¿qué límites del proceso (OCR,
-> datificación, tamaño del corpus) condicionan estas cifras?
+Los procedimientos permiten observar tres aspectos: un vocabulario frecuente
+compartido, diferencias léxicas entre obras y afinidades asociadas con la
+autoría — y hacen visible una cuarta dimensión: la calidad de los archivos
+interviene en lo que podemos conocer mediante ellos. La lectura distante
+aporta preguntas y relaciones que orientan el regreso a los textos, y rinde
+más cuando cada resultado conserva su escala: una frecuencia señala una
+recurrencia; el TF-IDF, una particularidad relativa al corpus; Delta, una
+proximidad bajo parámetros determinados. El contraste fino con Voyant y la
+discusión completa de límites se desarrollan en la memoria del trabajo.
+
+Concentro el cierre en dos preguntas que los datos señalan pero no responden:
+qué versiones permanecen activas sin cancelarse — el **no-colapso** — y qué
+cambia en la posición del lector aun cuando llega una explicación — la
+**irreversibilidad**. Los resultados computacionales indican dónde volver a
+mirar. Mi argumento deberá sostenerse allí: en los pasajes donde la casa
+vuelve a parecer una casa y, sin embargo, ya no puedo escucharla del mismo
+modo.
 
 ---
 
