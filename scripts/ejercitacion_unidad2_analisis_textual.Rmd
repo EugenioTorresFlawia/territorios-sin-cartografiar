@@ -1,0 +1,450 @@
+---
+title: "Ejercitación — Unidad 2: análisis textual estadístico"
+subtitle: "Otros análisis sobre el corpus sin palabras vacías y sobre un texto individual"
+author: "Eugenio Torres Flawiá"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 5)
+```
+
+## Preparación: reconstrucción del pipeline de la guía
+
+Se reconstruye en forma compacta el pipeline de la práctica (tokenización,
+eliminación de palabras vacías y limpieza). El corpus se toma de la carpeta
+local `corpus/`, que contiene los once `.txt` distribuidos con el material de
+la unidad; si la carpeta no existiera, se descarga el `corpus.zip` del
+repositorio de la cátedra.
+
+```{r pipeline}
+library(tidyverse)
+library(tidytext)
+
+if (!dir.exists("corpus")) {
+  download.file("https://github.com/rominicky/materiales/raw/refs/heads/main/assets/corpus.zip",
+                destfile = "corpus.zip", mode = "wb")
+  unzip("corpus.zip")
+}
+
+archivos <- list.files(path = "corpus", pattern = "\\.txt$")
+textos_archivo <- gsub("\\.txt", "", archivos, perl = TRUE)
+length(archivos)
+
+mensajes <- tibble(textos_archivo = character(),
+                   parrafo = numeric(),
+                   texto = character())
+
+for (i in 1:length(archivos)) {
+  corpus_total <- read_lines(file.path("corpus", archivos[i]))
+  temporal <- tibble(textos_archivo = textos_archivo[i],
+                     parrafo = seq_along(corpus_total),
+                     texto = corpus_total)
+  mensajes <- bind_rows(mensajes, temporal)
+}
+
+# Tokenización
+mensajes_palabras <- mensajes %>%
+  unnest_tokens(palabra, texto)
+
+# Palabras vacías (snowball, español)
+stopwords1 <- get_stopwords("es") %>%
+  rename(palabra = word)
+
+mensajes_sin_vacias <- mensajes_palabras %>%
+  anti_join(stopwords1, by = "palabra")
+
+# Limpieza (idéntica a la guía): dígitos, tokens de 3 caracteres o menos, restos
+limpiar <- function(tabla) {
+  tabla %>%
+    mutate(palabra = str_remove_all(palabra, "\\d+")) %>%
+    filter(nchar(palabra) > 3, palabra != "", palabra != ".", palabra != "n°")
+}
+
+mensajes_pal_limpio <- limpiar(mensajes_palabras)   # con vacías
+mensajes_limpio     <- limpiar(mensajes_sin_vacias) # sin vacías
+```
+
+**Nota sobre la versión del corpus.** La carpeta enlazada en el material de la
+unidad contiene once textos: los nueve del `corpus.zip` del repositorio, más un
+segundo texto de Ruy Díaz de Guzmán (*Relación de la entrada a los
+Chiriguanos*) y una *Leyenda araucana* anónima; el archivo de Azara, además,
+difiere entre ambas versiones. Las salidas impresas en la guía corresponden a
+la versión de nueve textos, de modo que los conteos de este trabajo —realizado
+sobre la versión de once— no coinciden exactamente con los de la guía.
+Registrar qué versión del corpus se utiliza es, en sí mismo, parte de la
+reproducibilidad del análisis.
+
+---
+
+## 1. ¿Qué emerge al quitar las palabras vacías?
+
+En la práctica vimos que, con las palabras vacías incluidas, la lista de
+términos más frecuentes estaba dominada por formas funcionales (*para*, *como*,
+*pero*, *este*, *hasta*, *donde*...), que hablan de la lengua pero no del
+corpus. Repetimos ahora el conteo sobre `mensajes_limpio`.
+
+```{r top-sin-vacias, fig.height=6}
+mensajes_limpio %>%
+  count(palabra, sort = TRUE) %>%
+  slice_max(n, n = 20) %>%
+  mutate(palabra = reorder(palabra, n)) %>%
+  ggplot(aes(x = palabra, y = n, fill = palabra)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Palabras más frecuentes del corpus sin palabras vacías",
+       x = NULL, y = "Número de ocurrencias")
+```
+
+**Interpretación.** Al retirar el estrato funcional aflora el léxico propio del
+género: *indios*, *tierra*, *gente*, *agua*, *españoles*, *pueblo*, *capitán*,
+*puerto*. Es, condensado en veinte barras, el vocabulario de la crónica de
+viaje y conquista: territorio, población originaria, mando militar y
+navegación. Se cuela además, en el podio, *dicho*: el marcador anafórico de la
+prosa notarial-administrativa colonial ("el dicho gobernador", "la dicha
+provincia"), a mitad de camino entre palabra funcional y seña de género. El
+resultado ilustra el sentido metodológico del filtrado: la frecuencia bruta
+describe la gramática; la frecuencia sin vacías empieza a describir el
+*contenido*.
+
+Dos observaciones adicionales. Primero, sobreviven al filtro varios términos
+cuasi-funcionales (*después*, *allí*, *mismo*, *aunque*, *pues*, *luego*,
+*cada*, *gran*): la lista snowball es una convención, no una frontera natural,
+y según la pregunta de investigación podría ampliarse con una lista propia.
+Segundo, la limpieza `nchar > 3` elimina también sustantivos plenos de tres
+letras (*río*, *mar*, *sol*), algo a tener en cuenta si el análisis temático
+fuera el objetivo central.
+
+---
+
+## 2. Otro análisis: TF-IDF por texto (cada cronista como documento)
+
+La parte teórica de la unidad define el TF-IDF con su componente IDF calculado
+sobre **documentos**: `IDF(t) = log(total de documentos / documentos que
+contienen t)`. Para aplicarlo tal como está definido, tratamos a cada uno de
+los textos del corpus como un documento y usamos `bind_tf_idf()` de `tidytext`,
+que implementa exactamente esa fórmula. Así, el puntaje destaca lo *distintivo*
+de cada texto: lo que ese texto dice y los demás no.
+
+```{r tfidf, fig.height=10, fig.width=9}
+frecuencia_texto <- mensajes_limpio %>%
+  count(textos_archivo, palabra, sort = TRUE) %>%
+  bind_tf_idf(palabra, textos_archivo, n)
+
+frecuencia_texto %>%
+  group_by(textos_archivo) %>%
+  slice_max(tf_idf, n = 6, with_ties = FALSE) %>%
+  ungroup() %>%
+  ggplot(aes(tf_idf,
+             reorder_within(palabra, tf_idf, textos_archivo),
+             fill = textos_archivo)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ textos_archivo, scales = "free", ncol = 3) +
+  scale_y_reordered() +
+  theme_minimal() +
+  labs(title = "Términos más distintivos de cada texto según TF-IDF",
+       x = "TF-IDF", y = NULL)
+```
+
+**Interpretación.** El TF-IDF dibuja un perfil nítido de cada texto, invisible
+en la frecuencia global:
+
+- **Azara** (naturalista ilustrado que revisa a sus antecesores): *asunción*,
+  *guaranís*, *irala*, y hasta los apellidos de otros cronistas del propio
+  corpus.
+- **Díaz de Guzmán, *Argentina manuscrita***: léxico administrativo de la
+  conquista (*gobernación*, *adelantado*, *capitán*).
+- **Díaz de Guzmán, *Chiriguanos***: aquí lo "distintivo" es sobre todo el
+  estado ortográfico del manuscrito —*yndios*, *governador*, *qual*, *deste*—
+  junto al etnónimo *chiriguanas*.
+- **Du Biscay**: el comerciante — *mercaderías*, *coronas*, *minas*, *jujuy*,
+  *holandeses*.
+- **Hudson**: el naturalista moderno — *patagonia*, *naturaleza*, *notas*, y
+  unidades métricas (*metros*) que lo datan en el siglo XIX.
+- **Leyenda araucana**: los nombres propios y préstamos del mundo narrado
+  (*ancali*, *vilca*, *caldén*, *curaca*).
+- **Moreno**: el geógrafo — *mesetas*, *colinas*, *bote*, *lago*.
+- **Pigafetta**: la toponimia del viaje a las Molucas (*maluco*, *rajá*,
+  *tadore*).
+- **Viedma**: la forma diario aflora como léxico — *amaneció*, *anocheció*,
+  *bonancible*.
+
+El método también funciona como **diagnóstico de calidad y de estado del
+corpus**: en *Schmidl* los términos "más distintivos" son formas truncadas
+(*habi*, *capita*, *navi*, *tambie*, *despue*), huella de un problema de
+digitalización del archivo fuente; y en *Pero Hernández* y *Chiriguanos* lo que
+sobresale es la ortografía de los siglos XVI-XVII (*abia*, *qual*, *yndios*).
+Es decir: el TF-IDF no distingue entre tema, época ortográfica y ruido de OCR —
+separa lo *raro en el corpus*, sea lo que sea. Antes de un análisis temático
+fino, esos textos requerirían normalización adicional.
+
+---
+
+## 3. Ley de Zipf: con y sin palabras vacías
+
+```{r zipf}
+frec_completo <- mensajes_palabras %>%
+  count(palabra, sort = TRUE) %>%
+  mutate(relativa = n / sum(n),
+         Clasificacion = row_number(),
+         corpus = "Corpus completo")
+
+frec_sin_vacias <- mensajes_limpio %>%
+  count(palabra, sort = TRUE) %>%
+  mutate(relativa = n / sum(n),
+         Clasificacion = row_number(),
+         corpus = "Sin palabras vacías")
+
+bind_rows(frec_completo, frec_sin_vacias) %>%
+  ggplot(aes(Clasificacion, relativa, color = corpus)) +
+  geom_line(linewidth = 1) +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_minimal() +
+  labs(title = "Ley de Zipf: efecto de eliminar las palabras vacías",
+       x = "Clasificación (rango, escala log)",
+       y = "Frecuencia relativa (escala log)",
+       color = NULL)
+
+# Pendientes del ajuste log-log en el tramo de rangos 10 a 1000
+pendiente <- function(tabla, lo = 10, hi = 1000) {
+  datos <- filter(tabla, Clasificacion >= lo, Clasificacion <= hi)
+  coef(lm(log10(relativa) ~ log10(Clasificacion), data = datos))[2]
+}
+pend_completo   <- pendiente(frec_completo)
+pend_sin_vacias <- pendiente(frec_sin_vacias)
+round(c(corpus_completo = pend_completo, sin_vacias = pend_sin_vacias), 3)
+```
+
+**Interpretación.** Con el corpus completo, la curva es una recta en escala
+log-log con pendiente cercana a −1 (en nuestro ajuste,
+`r round(pend_completo, 2)` entre los rangos 10 y 1000): el corpus de viajeros
+cumple la ley de Zipf con el exponente canónico que Sano, Takayasu y Takayasu
+(2012) reportan para novelas, blogs y hasta código de programación.
+
+Al quitar las vacías, la curva pierde su cabeza: los primeros cientos de rangos
+se aplanan en una meseta (la pendiente cae a `r round(pend_sin_vacias, 2)` en
+ese mismo tramo) y recién en la cola la caída recupera un régimen cercano al
+potencial. La lectura es directa: **el tramo más "zipfiano" de la ley lo
+sostienen justamente las palabras funcionales** — el puñado de formas
+gramaticales ultrafrecuentes que acabamos de eliminar. No es un detalle menor:
+esas mismas palabras, informativamente "vacías", son las que Mosteller y
+Wallace (1963) usaron como huella dactilar de autor en los *Federalist
+Papers*. Lo que se descarta para el análisis temático es precisamente lo que
+se conserva para la estilometría, que veremos al final del módulo.
+
+---
+
+## 4. Ley de Heaps sin palabras vacías
+
+```{r heaps}
+crecimiento_sin_vacias <- mensajes_limpio %>%
+  group_by(textos_archivo) %>%
+  mutate(total_palabras = row_number(),
+         vocabulario = cumsum(!duplicated(palabra))) %>%
+  ungroup()
+
+ggplot(crecimiento_sin_vacias,
+       aes(total_palabras, vocabulario, color = textos_archivo)) +
+  geom_line(linewidth = 0.6) +
+  theme_minimal() +
+  labs(title = "Ley de Heaps por texto (corpus sin palabras vacías)",
+       x = "Total de palabras procesadas",
+       y = "Vocabulario (palabras únicas)",
+       color = "Textos")
+
+# Exponente beta por texto: pendiente del ajuste log-log
+tabla_heaps <- crecimiento_sin_vacias %>%
+  group_by(textos_archivo) %>%
+  summarize(N = max(total_palabras),
+            Vocabulario = max(vocabulario),
+            beta = round(coef(lm(log10(vocabulario) ~ log10(total_palabras)))[2], 3)) %>%
+  arrange(desc(beta))
+
+knitr::kable(tabla_heaps,
+             caption = "Ley de Heaps sin palabras vacías: tamaño, vocabulario y exponente β por texto")
+```
+
+**Interpretación.** Las curvas conservan la forma cóncava característica de
+Heaps, pero con exponentes β sistemáticamente **más altos** que sobre el corpus
+crudo (aquí entre ~0,70 y ~0,89, contra ~0,64–0,73 con las vacías incluidas).
+Tiene lógica: las palabras funcionales son pocas, aparecen enseguida y luego
+solo se repiten; al quitarlas, cada tramo nuevo de texto aporta
+proporcionalmente más palabras nunca vistas, y el vocabulario "rinde" más por
+token.
+
+La tabla muestra además que β no es una constante del idioma sino que depende
+del tamaño y del tipo de texto: los textos cortos encabezan el ranking — la
+*Leyenda araucana*, el más breve del corpus, exhibe el β más alto, seguida por
+Du Biscay y Pero Hernández — porque todavía están en plena fase de
+descubrimiento léxico, tal como advierten Sano *et al.* (2012): el exponente de
+Heaps varía con la ventana de observación y tiende a bajar en documentos muy
+largos. Entre los textos extensos, Hudson sostiene el crecimiento de
+vocabulario más alto (la prosa literaria más variada del corpus), mientras que
+Díaz de Guzmán (*Argentina manuscrita*) muestra la curva más achatada: la
+escritura más formularia y repetitiva del conjunto.
+
+---
+
+## 5. Un solo texto del corpus: *Días de ocio en la Patagonia* (Hudson)
+
+Repetimos los análisis tomando un único texto, para responder si las curvas de
+un documento individual se comportan como las del corpus agregado.
+
+```{r hudson-zipf}
+texto_elegido <- "Hudson_DiasDeOcio"
+
+frec_hudson <- mensajes_palabras %>%
+  filter(textos_archivo == texto_elegido) %>%
+  count(palabra, sort = TRUE) %>%
+  mutate(relativa = n / sum(n),
+         Clasificacion = row_number(),
+         corpus = "Hudson (texto único)")
+
+bind_rows(frec_completo, frec_hudson) %>%
+  ggplot(aes(Clasificacion, relativa, color = corpus)) +
+  geom_line(linewidth = 1) +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_minimal() +
+  labs(title = "Ley de Zipf: corpus completo vs. un texto individual",
+       x = "Clasificación (rango, escala log)",
+       y = "Frecuencia relativa (escala log)",
+       color = NULL)
+
+pend_hudson <- pendiente(frec_hudson)
+round(c(corpus_completo = pend_completo, hudson = pend_hudson), 3)
+```
+
+```{r hudson-top}
+mensajes_limpio %>%
+  filter(textos_archivo == texto_elegido) %>%
+  count(palabra, sort = TRUE) %>%
+  slice_max(n, n = 10) %>%
+  knitr::kable(caption = "Hudson, palabras más frecuentes sin vacías")
+```
+
+**Interpretación.** Las dos curvas de Zipf son casi superponibles: mismo perfil
+recto en log-log, pendientes prácticamente idénticas
+(`r round(pend_completo, 2)` para el corpus, `r round(pend_hudson, 2)` para
+Hudson solo). La curva de Heaps de Hudson, visible en el gráfico de la sección
+anterior, tampoco cambia de naturaleza: es la misma forma cóncava, en una
+escala menor y con su propio β. Las leyes estadísticas del lenguaje son
+**robustas a la escala**: valen para un texto individual igual que para el
+corpus agregado, con parámetros levemente distintos (menor N, menor
+vocabulario, β algo distinto según el largo).
+
+Lo que sí cambia por completo es el *contenido* de la distribución. El top de
+Hudson sin vacías — *ojos*, *naturaleza*, *hombre*, *vida*, *pájaros*,
+*vista* — no comparte casi nada con el top del corpus (*indios*, *tierra*,
+*capitán*, *puerto*): frente al léxico de la conquista y la navegación de los
+cronistas coloniales, Hudson trae la mirada contemplativa del naturalista del
+siglo XIX. La comparación condensa la conclusión del ejercicio: **la forma de
+las curvas es una propiedad del lenguaje; el vocabulario que las llena es una
+propiedad del texto**.
+
+---
+
+## 6. Yapa: una primera huella estilométrica (Delta de Burrows)
+
+El corpus de once textos incluye dos obras del mismo autor (Ruy Díaz de
+Guzmán). Eso permite un ensayo anticipado de la estilometría que cierra el
+módulo: si —como en Mosteller y Wallace— la firma de un autor vive en sus
+palabras funcionales, dos textos de la misma mano deberían parecerse entre sí
+más que al resto, *aun usando solamente las palabras que descartamos en las
+secciones anteriores*. Aplicamos una versión elemental del Delta de Burrows
+(2002): tasas por mil de las 150 palabras más frecuentes del corpus,
+estandarizadas por palabra, y distancia Manhattan media entre textos.
+
+```{r delta}
+mfw <- mensajes_palabras %>%
+  count(palabra, sort = TRUE) %>%
+  slice_max(n, n = 150, with_ties = FALSE) %>%
+  pull(palabra)
+
+tasas <- mensajes_palabras %>%
+  count(textos_archivo, palabra) %>%
+  group_by(textos_archivo) %>%
+  mutate(tasa = 1000 * n / sum(n)) %>%
+  ungroup() %>%
+  filter(palabra %in% mfw) %>%
+  select(textos_archivo, palabra, tasa) %>%
+  pivot_wider(names_from = palabra, values_from = tasa, values_fill = 0) %>%
+  column_to_rownames("textos_archivo")
+
+delta <- as.matrix(dist(scale(tasas), method = "manhattan")) / length(mfw)
+
+vecinos <- tibble(
+  texto  = rownames(delta),
+  vecino_mas_proximo = apply(delta, 1, function(x) names(sort(x))[2]),
+  delta  = apply(delta, 1, function(x) round(sort(x)[2], 3)))
+
+knitr::kable(vecinos,
+             caption = "Delta de Burrows (150 palabras más frecuentes): vecino estilístico más próximo de cada texto")
+```
+
+**Interpretación.** El resultado central: los dos textos de Díaz de Guzmán son
+**mutuamente el vecino más próximo del otro**, pese a encontrarse en estados
+ortográficos distintos (*Argentina manuscrita* modernizada, *Chiriguanos* con
+grafía de época). Las palabras funcionales, invisibles para la lectura
+temática, recuperan la mano del autor — en miniatura, el resultado de
+Mosteller y Wallace sobre nuestro propio corpus.
+
+El experimento exige, a la vez, las cautelas que aquellos autores llamaban
+*contextualidad*. Hudson y Moreno —autores distintos— forman el par más
+próximo de todo el corpus: género y época (dos naturalistas decimonónicos en
+la Patagonia) también acercan perfiles funcionales. Pero Hernández se arrima a
+los Guzmán por comunidad ortográfica de época más que por mano. Y Schmidl
+queda lejos de todos: el daño de digitalización que detectó el TF-IDF
+distorsiona incluso sus tasas de palabras funcionales (las formas truncadas
+*tambie* o *despue* no computan como *también* o *después*). El Delta separa
+*algo* — mano, época, género o ruido — y distinguir cuál de esas cosas es,
+precisamente, el trabajo fino de la estilometría.
+
+---
+
+## 7. Conclusiones
+
+**¿Qué sugieren los resultados sin palabras vacías?** Que el filtrado desplaza
+el análisis de la gramática al contenido: emergen el léxico temático del
+género (territorio, población, mando, navegación — y el notarial *dicho*) y,
+con TF-IDF por documento, el perfil distintivo de cada texto — incluida la
+detección de defectos de digitalización (Schmidl) y de variación ortográfica
+histórica (Pero Hernández, *Chiriguanos*) que habría que normalizar antes de un
+análisis temático fino. A la vez, la ley de Zipf pierde su cabeza al quitar las
+vacías: el exponente canónico ≈ −1 lo sostienen las palabras funcionales, las
+mismas que la estilometría aprovecha como firma de autor — como lo confirma la
+yapa: con solo 150 palabras frecuentes, los dos textos de Díaz de Guzmán se
+reconocen entre sí. Y la ley de Heaps se mantiene, con exponentes más altos:
+el vocabulario de contenido es más diverso que el funcional.
+
+**¿Difieren los resultados con un solo texto? ¿Son similares las curvas?** Las
+curvas son similares en forma — Zipf y Heaps valen a escala de texto individual
+igual que a escala de corpus, con parámetros propios (N, vocabulario, β) — pero
+el léxico que ocupa cada distribución es específico de cada obra. Las
+regularidades estadísticas son del lenguaje; las palabras, de cada autor.
+
+---
+
+## Bibliografía
+
+Burrows, J. (2002). 'Delta': a Measure of Stylistic Difference and a Guide to
+Likely Authorship. *Literary and Linguistic Computing*, 17(3), 267–287.
+
+De León, R. *Primeros pasos en el análisis textual en RStudio* (guía de la
+Unidad 2) e *Introducción al análisis textual estadístico* (material teórico
+del módulo).
+
+Mosteller, F., & Wallace, D. L. (1963). Inference in an Authorship Problem.
+*Journal of the American Statistical Association*, 58(302), 275–309.
+
+Sano, Y., Takayasu, H., & Takayasu, M. (2012). Zipf's Law and Heaps' Law Can
+Predict the Size of Potential Words. *Progress of Theoretical Physics
+Supplement*, 194, 202–209.
