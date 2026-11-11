@@ -121,10 +121,10 @@ knitr::kable(tabla_control,
              caption = "Control del corpus: tokens y vocabulario por obra (contrastar con Voyant)")
 ```
 
-> **[COMPLETAR tras tejer]** Contrastar la tabla de control con las cifras del
-> `Reporte_U5_Voyant_UmbralWeird_V1`: ¿coinciden los órdenes de magnitud de
-> tokens y vocabulario por obra? Toda divergencia merece una línea en la
-> memoria (tokenización distinta, tratamiento de guiones o apóstrofos, etc.).
+El contraste sistemático de estas cifras con las del reporte de Voyant
+(tokenización, tratamiento de guiones y apóstrofos, efecto de la misma lista
+de stopwords en ambas herramientas) se desarrolla en la memoria del trabajo
+(Dimensión textual).
 
 ---
 
@@ -165,12 +165,21 @@ ggsave(file.path(MEDIA, "r_frecuencias_por_obra.png"), g2,
        width = 9, height = 8, dpi = 150)
 ```
 
-> **[COMPLETAR tras tejer — guía de observación, no de conclusión]**
-> ¿Qué estrato léxico emerge al quitar las vacías: espacio doméstico (*casa*,
-> *puerta*, *pieza*), cuerpo, percepción? ¿Aparecen en el top los indefinidos
-> preservados a propósito (*algo*, *nada*, *nadie*, *alguien*)? ¿El léxico
-> frecuente global coincide con el de alguna obra en particular o las cinco
-> aportan estratos distintos?
+**Interpretación.** Mi pregunta de investigación es qué les ocurre a las
+formas reconocibles cuando siguen funcionando después de perder su capacidad
+de orientarnos; desde ahí leo esta distribución: la casa conserva las paredes,
+pero el plano ya no garantiza una salida. La primera posición de *casa* y la
+segunda de *nada* permiten interrogar la convivencia entre insistencia
+espacial e indeterminación — una entrada estadística a mi concepto de
+**umbral**: el espacio sigue siendo reconocible mientras su capacidad de
+garantizar continuidad queda bajo sospecha. *Puerta*, *piso* y *habitación*
+refuerzan la presencia del ámbito doméstico; *algo*, *nadie* y *nada* —los
+indefinidos que la lista de stopwords preservó deliberadamente— introducen
+grados distintos de indeterminación; y la frecuencia de *ojos*, *luz*, *noche*
+y *cara* abre una línea sobre las condiciones de visibilidad: quién puede ver,
+qué alcanza a distinguir, qué permanece incierto. Para sostener esta lectura
+necesito revisar las concordancias: qué niegan esos *nada*, qué anuncian esos
+*algo* y a quién sustraen esos *nadie*.
 
 ---
 
@@ -202,13 +211,20 @@ ggsave(file.path(MEDIA, "r_tfidf_por_obra.png"), g3,
        width = 9, height = 9, dpi = 150)
 ```
 
-> **[COMPLETAR tras tejer]** En la ejercitación de la Unidad 2, el TF-IDF
-> funcionó además como diagnóstico del estado del corpus (las formas truncadas
-> de Schmidl delataban un problema de digitalización). Revisar si ocurre lo
-> mismo aquí: el inicio de *Territorios sin cartografiar* conserva ruido de
-> OCR, y si sus "términos distintivos" incluyen formas rotas, ese hallazgo
-> va directo al Registro de límites de la memoria. Para el resto: ¿el TF-IDF
-> separa nombres propios, espacios, objetos? ¿Qué perfil dibuja de cada obra?
+**Interpretación.** El vocabulario distintivo de *Habitación* orienta la
+lectura hacia la arquitectura como procedimiento: *altillo*, *recibidor* — los
+recintos y recorridos que distribuyen espera, autoridad y acceso, hasta volver
+la organización doméstica un campo de acción de la anomalía. En *Adela*,
+*películas*, *mochila*, *brazo* y *viejitos* proponen otras entradas —consumos
+culturales, objetos cotidianos, corporalidad—, pistas para volver al texto
+antes que temas definidos por sí mismas. La aparición de *dde* entre los
+términos distintivos de Ferrari introduce un límite decisivo: la singularidad
+estadística también puede proceder del deterioro del archivo. El procedimiento
+identifica formas infrecuentes en el conjunto sin distinguir su origen
+narrativo o técnico; por eso el TF-IDF sirve, además, para auditar la
+digitalización — condición que afecta la interpretación y queda registrada
+como tal. El cálculo identifica particularidades léxicas; los pasajes deben
+mostrar cómo trabaja esa distribución sobre personajes y lectores.
 
 ---
 
@@ -249,12 +265,18 @@ pend_sin_vacias <- pendiente(frec_sin_vacias)
 round(c(corpus_completo = pend_completo, sin_vacias = pend_sin_vacias), 3)
 ```
 
-> **[COMPLETAR tras tejer]** ¿La narrativa contemporánea reproduce el exponente
-> canónico ≈ −1 que el corpus de cronistas exhibió en la ejercitación? ¿Se
-> repite la "decapitación" de la curva al quitar las vacías? La comparación
-> entre ambos corpus (crónica colonial vs. ficción weird) es un hallazgo
-> aprovechable para la memoria: las leyes estadísticas del lenguaje como
-> invariante frente a género y época.
+**Interpretación.** La pendiente de −0,978 del corpus completo describe una
+regularidad cercana al patrón esperado: pocas palabras concentran muchas
+apariciones y una gran cantidad de formas aparece con baja frecuencia. Al
+retirar las vacías, la pendiente pasa a −0,676: el preprocesamiento modifica
+la distribución que se analiza. La coincidencia con el corpus de cronistas de
+la ejercitación debe presentarse como eso — una coincidencia entre los casos
+estudiados, no una invariancia general, que exigiría ajustes comparables y una
+selección mayor de textos. Mi concepto de **entropía narrativa** exige, además,
+otra observación que este cálculo no provee: cómo una misma superficie admite
+versiones incompatibles sin permitir que alguna se imponga definitivamente.
+Mantengo esa diferencia de escala para precisar qué aporta el cálculo y dónde
+comienza la lectura conceptual.
 
 ---
 
@@ -289,11 +311,20 @@ knitr::kable(tabla_heaps,
              caption = "Ley de Heaps: tamaño, vocabulario y exponente β por obra")
 ```
 
-> **[COMPLETAR tras tejer]** ¿Qué obra sostiene el mayor crecimiento de
-> vocabulario y cuál es la más repetitiva? Recordar la advertencia de Sano
-> *et al.* (2012): β depende del tamaño — los cuentos de Enríquez, mucho más
-> breves que las novelas, tendrán β alto por estar en fase de descubrimiento
-> léxico. Comparar solo pares de tamaño similar.
+**Interpretación.** Los valores de β permiten comparar el crecimiento del
+vocabulario, pero las extensiones desiguales obligan a la prudencia que
+advierten Sano *et al.* (2012): los exponentes se estiman sobre recorridos de
+distinta longitud. La comparación relevante es Ferrari–Conserje, por sus
+tamaños próximos tras el filtrado: Ferrari incorpora más formas distintas y
+muestra un crecimiento estimado mayor, compatible con una diversidad léxica
+superior — aunque el daño de OCR ofrece una explicación alternativa: cada
+variante defectuosa puede contabilizarse como palabra nueva. La incertidumbre
+es, en sí misma, un resultado metodológico: impide atribuir toda diferencia al
+estilo y señala una comprobación concreta — revisar las formas de baja
+frecuencia y repetir la comparación sobre segmentos de igual longitud con
+criterios de limpieza comunes. Antes de interpretar esa diferencia como rasgo
+de escritura, necesito distinguir cuánto corresponde al texto y cuánto a su
+digitalización.
 
 ---
 
@@ -332,13 +363,21 @@ knitr::kable(vecinos,
              caption = "Delta de Burrows (150 MFW): vecino estilístico más próximo de cada obra")
 ```
 
-> **[COMPLETAR tras tejer]** La pregunta binaria: ¿cada Enríquez tiene como
-> vecina a la otra Enríquez, y cada Romero al otro Romero? Si sí, el resultado
-> de la ejercitación (Díaz de Guzmán reconociéndose a sí mismo) se replica por
-> partida doble sobre narrativa contemporánea. Si no, aplicar las cautelas de
-> *contextualidad*: género, extensión y ruido de OCR (Ferrari) también mueven
-> los perfiles funcionales. Cualquiera de los dos resultados es material para
-> la memoria.
+**Interpretación.** El resultado más consistente es la formación de dos pares
+de vecinos mutuos que coinciden con la autoría — Adela–Patio y
+Conserje–Habitación —, pese a extensiones muy desiguales dentro de cada par.
+Las frecuencias de las 150 palabras funcionales captan regularidades
+compartidas entre obras de una misma mano, y eso me permite precisar la
+hipótesis sobre la **sensibilidad weird**: cada autor puede construirla
+mediante procedimientos propios y conservar afinidades estilísticas
+reconocibles — la sensibilidad como operación transversal que no borra la
+firma. La cercanía de Ferrari con Conserje requiere una lectura más acotada:
+al no contar con otra obra de Ferrari, el análisis solo identifica su vecino
+dentro de este conjunto, posición que podría responder a afinidad estilística,
+a las obras seleccionadas o a las condiciones de preparación de los archivos.
+Me corresponde mostrar, mediante la lectura, qué relación existe entre las
+operaciones domésticas, burocráticas y urbanas que motivaron la selección del
+corpus.
 
 ---
 
