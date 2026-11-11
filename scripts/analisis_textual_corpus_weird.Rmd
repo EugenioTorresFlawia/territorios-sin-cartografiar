@@ -1,0 +1,370 @@
+---
+title: "Territorios sin cartografiar — análisis textual del corpus"
+subtitle: "Fase exploratoria del TIM: frecuencias, TF-IDF, Zipf, Heaps y una huella estilométrica"
+author: "Eugenio Torres Flawiá"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 5)
+```
+
+## Preparación: pipeline sobre el corpus propio
+
+Este script adapta el pipeline de la ejercitación de la Unidad 2 al corpus de
+la muestra del proyecto: cinco ficciones argentinas contemporáneas (Enríquez,
+Romero, Ferrari). Dos decisiones metodológicas lo distinguen de la guía:
+
+1. **Stopwords**: se usa exclusivamente la lista curada del proyecto
+   (`stopwords_UmbralWeird_v2_completa.txt`, 302 términos), la misma aplicada
+   en Voyant Tools. Un filtro idéntico en ambas herramientas hace comparables
+   sus salidas, que es lo que la consigna pide contrastar. La lista preserva
+   deliberadamente los indefinidos (*algo*, *nada*, *nadie*, *alguien*) y la
+   deixis temporal, relevantes para la hipótesis de lectura, e incorpora el
+   voseo rioplatense.
+2. **Limpieza**: se eliminan dígitos y tokens residuales de un solo carácter,
+   pero **no** se aplica el filtro `nchar > 3` de la guía, que eliminaría
+   monosílabos y bisílabos plenos (*luz*, *voz*, *casa* queda, *río*, *mar*)
+   y rompería la comparabilidad con Voyant, que no filtra por longitud.
+
+Los textos completos se leen de `data/raw_full/`, carpeta local excluida del
+versionado público por derechos de autor (ver `data/raw/NOTA_METODOLOGICA.md`).
+Este documento debe tejerse desde `scripts/`, de modo que las rutas relativas
+`../` resuelvan dentro del repositorio.
+
+```{r pipeline}
+library(tidyverse)
+library(tidytext)
+
+RAW_FULL <- "../data/raw_full"
+CLEAN    <- "../data/clean"
+MEDIA    <- "../media"
+
+if (!dir.exists(RAW_FULL)) {
+  stop("No se encuentra ../data/raw_full/. Esta carpeta contiene los textos ",
+       "completos del corpus y queda fuera del repositorio público por ",
+       "derechos de autor (ver data/raw/NOTA_METODOLOGICA.md). ",
+       "Reponerla localmente antes de tejer.")
+}
+
+archivos <- list.files(path = RAW_FULL, pattern = "_limpio\\.txt$")
+length(archivos)
+
+# Etiquetas legibles y autor, derivados del nombre de archivo
+etiquetar <- function(archivo) {
+  case_when(
+    str_detect(archivo, "La_casa_de_Adela")      ~ "Enríquez · Adela",
+    str_detect(archivo, "El_patio_del_vecino")   ~ "Enríquez · Patio",
+    str_detect(archivo, "El_conserje")           ~ "Romero · Conserje",
+    str_detect(archivo, "La_habitacion")         ~ "Romero · Habitación",
+    str_detect(archivo, "Territorios")           ~ "Ferrari · Territorios",
+    TRUE ~ str_remove(archivo, "_limpio\\.txt$")
+  )
+}
+
+mensajes <- tibble(textos_archivo = character(),
+                   parrafo = numeric(),
+                   texto = character())
+
+for (i in seq_along(archivos)) {
+  corpus_total <- read_lines(file.path(RAW_FULL, archivos[i]))
+  temporal <- tibble(textos_archivo = etiquetar(archivos[i]),
+                     parrafo = seq_along(corpus_total),
+                     texto = corpus_total)
+  mensajes <- bind_rows(mensajes, temporal)
+}
+
+mensajes <- mensajes %>%
+  mutate(autor = word(textos_archivo, 1))
+
+# Tokenización
+mensajes_palabras <- mensajes %>%
+  unnest_tokens(palabra, texto)
+
+# Stopwords: lista curada del proyecto (la misma usada en Voyant)
+stopwords_uw <- tibble(
+  palabra = read_lines(file.path(CLEAN, "stopwords_UmbralWeird_v2_completa.txt"))
+) %>%
+  filter(palabra != "")
+
+mensajes_sin_vacias <- mensajes_palabras %>%
+  anti_join(stopwords_uw, by = "palabra")
+
+# Limpieza: dígitos y residuos de un carácter (sin filtro nchar > 3; ver nota)
+limpiar <- function(tabla) {
+  tabla %>%
+    mutate(palabra = str_remove_all(palabra, "\\d+")) %>%
+    filter(nchar(palabra) > 1, palabra != "", palabra != ".", palabra != "n°")
+}
+
+mensajes_pal_limpio <- limpiar(mensajes_palabras)   # con vacías
+mensajes_limpio     <- limpiar(mensajes_sin_vacias) # sin vacías
+
+# Tabla de control: comparar estas cifras con las del reporte de Voyant
+tabla_control <- mensajes_pal_limpio %>%
+  group_by(textos_archivo) %>%
+  summarize(tokens = n(), vocabulario = n_distinct(palabra)) %>%
+  left_join(
+    mensajes_limpio %>%
+      group_by(textos_archivo) %>%
+      summarize(tokens_sin_vacias = n()),
+    by = "textos_archivo") %>%
+  arrange(desc(tokens))
+
+knitr::kable(tabla_control,
+             caption = "Control del corpus: tokens y vocabulario por obra (contrastar con Voyant)")
+```
+
+> **[COMPLETAR tras tejer]** Contrastar la tabla de control con las cifras del
+> `Reporte_U5_Voyant_UmbralWeird_V1`: ¿coinciden los órdenes de magnitud de
+> tokens y vocabulario por obra? Toda divergencia merece una línea en la
+> memoria (tokenización distinta, tratamiento de guiones o apóstrofos, etc.).
+
+---
+
+## 1. Frecuencias sin palabras vacías: el léxico del corpus
+
+```{r top-global, fig.height=6}
+g1 <- mensajes_limpio %>%
+  count(palabra, sort = TRUE) %>%
+  slice_max(n, n = 20) %>%
+  mutate(palabra = reorder(palabra, n)) %>%
+  ggplot(aes(x = palabra, y = n, fill = palabra)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Palabras más frecuentes del corpus sin palabras vacías",
+       x = NULL, y = "Número de ocurrencias")
+g1
+ggsave(file.path(MEDIA, "r_frecuencias_corpus.png"), g1,
+       width = 8, height = 6, dpi = 150)
+```
+
+```{r top-por-obra, fig.height=8}
+g2 <- mensajes_limpio %>%
+  count(textos_archivo, palabra, sort = TRUE) %>%
+  group_by(textos_archivo) %>%
+  slice_max(n, n = 10, with_ties = FALSE) %>%
+  ungroup() %>%
+  ggplot(aes(n, reorder_within(palabra, n, textos_archivo),
+             fill = textos_archivo)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ textos_archivo, scales = "free", ncol = 2) +
+  scale_y_reordered() +
+  theme_minimal() +
+  labs(title = "Palabras más frecuentes por obra (sin palabras vacías)",
+       x = "Número de ocurrencias", y = NULL)
+g2
+ggsave(file.path(MEDIA, "r_frecuencias_por_obra.png"), g2,
+       width = 9, height = 8, dpi = 150)
+```
+
+> **[COMPLETAR tras tejer — guía de observación, no de conclusión]**
+> ¿Qué estrato léxico emerge al quitar las vacías: espacio doméstico (*casa*,
+> *puerta*, *pieza*), cuerpo, percepción? ¿Aparecen en el top los indefinidos
+> preservados a propósito (*algo*, *nada*, *nadie*, *alguien*)? ¿El léxico
+> frecuente global coincide con el de alguna obra en particular o las cinco
+> aportan estratos distintos?
+
+---
+
+## 2. TF-IDF por obra: lo distintivo de cada territorio narrativo
+
+Cada obra se trata como documento; `bind_tf_idf()` destaca lo que cada texto
+dice y los demás no.
+
+```{r tfidf, fig.height=9, fig.width=9}
+frecuencia_texto <- mensajes_limpio %>%
+  count(textos_archivo, palabra, sort = TRUE) %>%
+  bind_tf_idf(palabra, textos_archivo, n)
+
+g3 <- frecuencia_texto %>%
+  group_by(textos_archivo) %>%
+  slice_max(tf_idf, n = 8, with_ties = FALSE) %>%
+  ungroup() %>%
+  ggplot(aes(tf_idf,
+             reorder_within(palabra, tf_idf, textos_archivo),
+             fill = textos_archivo)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ textos_archivo, scales = "free", ncol = 2) +
+  scale_y_reordered() +
+  theme_minimal() +
+  labs(title = "Términos más distintivos de cada obra según TF-IDF",
+       x = "TF-IDF", y = NULL)
+g3
+ggsave(file.path(MEDIA, "r_tfidf_por_obra.png"), g3,
+       width = 9, height = 9, dpi = 150)
+```
+
+> **[COMPLETAR tras tejer]** En la ejercitación de la Unidad 2, el TF-IDF
+> funcionó además como diagnóstico del estado del corpus (las formas truncadas
+> de Schmidl delataban un problema de digitalización). Revisar si ocurre lo
+> mismo aquí: el inicio de *Territorios sin cartografiar* conserva ruido de
+> OCR, y si sus "términos distintivos" incluyen formas rotas, ese hallazgo
+> va directo al Registro de límites de la memoria. Para el resto: ¿el TF-IDF
+> separa nombres propios, espacios, objetos? ¿Qué perfil dibuja de cada obra?
+
+---
+
+## 3. Ley de Zipf: con y sin palabras vacías
+
+```{r zipf}
+frec_completo <- mensajes_pal_limpio %>%
+  count(palabra, sort = TRUE) %>%
+  mutate(relativa = n / sum(n),
+         Clasificacion = row_number(),
+         corpus = "Corpus completo")
+
+frec_sin_vacias <- mensajes_limpio %>%
+  count(palabra, sort = TRUE) %>%
+  mutate(relativa = n / sum(n),
+         Clasificacion = row_number(),
+         corpus = "Sin palabras vacías")
+
+g4 <- bind_rows(frec_completo, frec_sin_vacias) %>%
+  ggplot(aes(Clasificacion, relativa, color = corpus)) +
+  geom_line(linewidth = 1) +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_minimal() +
+  labs(title = "Ley de Zipf en el corpus weird: efecto de las palabras vacías",
+       x = "Clasificación (rango, escala log)",
+       y = "Frecuencia relativa (escala log)",
+       color = NULL)
+g4
+ggsave(file.path(MEDIA, "r_zipf.png"), g4, width = 8, height = 5, dpi = 150)
+
+pendiente <- function(tabla, lo = 10, hi = 1000) {
+  datos <- filter(tabla, Clasificacion >= lo, Clasificacion <= hi)
+  coef(lm(log10(relativa) ~ log10(Clasificacion), data = datos))[2]
+}
+pend_completo   <- pendiente(frec_completo)
+pend_sin_vacias <- pendiente(frec_sin_vacias)
+round(c(corpus_completo = pend_completo, sin_vacias = pend_sin_vacias), 3)
+```
+
+> **[COMPLETAR tras tejer]** ¿La narrativa contemporánea reproduce el exponente
+> canónico ≈ −1 que el corpus de cronistas exhibió en la ejercitación? ¿Se
+> repite la "decapitación" de la curva al quitar las vacías? La comparación
+> entre ambos corpus (crónica colonial vs. ficción weird) es un hallazgo
+> aprovechable para la memoria: las leyes estadísticas del lenguaje como
+> invariante frente a género y época.
+
+---
+
+## 4. Ley de Heaps por obra
+
+```{r heaps}
+crecimiento_sin_vacias <- mensajes_limpio %>%
+  group_by(textos_archivo) %>%
+  mutate(total_palabras = row_number(),
+         vocabulario = cumsum(!duplicated(palabra))) %>%
+  ungroup()
+
+g5 <- ggplot(crecimiento_sin_vacias,
+             aes(total_palabras, vocabulario, color = textos_archivo)) +
+  geom_line(linewidth = 0.6) +
+  theme_minimal() +
+  labs(title = "Ley de Heaps por obra (sin palabras vacías)",
+       x = "Total de palabras procesadas",
+       y = "Vocabulario (palabras únicas)",
+       color = "Obra")
+g5
+ggsave(file.path(MEDIA, "r_heaps.png"), g5, width = 8, height = 5, dpi = 150)
+
+tabla_heaps <- crecimiento_sin_vacias %>%
+  group_by(textos_archivo) %>%
+  summarize(N = max(total_palabras),
+            Vocabulario = max(vocabulario),
+            beta = round(coef(lm(log10(vocabulario) ~ log10(total_palabras)))[2], 3)) %>%
+  arrange(desc(beta))
+
+knitr::kable(tabla_heaps,
+             caption = "Ley de Heaps: tamaño, vocabulario y exponente β por obra")
+```
+
+> **[COMPLETAR tras tejer]** ¿Qué obra sostiene el mayor crecimiento de
+> vocabulario y cuál es la más repetitiva? Recordar la advertencia de Sano
+> *et al.* (2012): β depende del tamaño — los cuentos de Enríquez, mucho más
+> breves que las novelas, tendrán β alto por estar en fase de descubrimiento
+> léxico. Comparar solo pares de tamaño similar.
+
+---
+
+## 5. Huella estilométrica: Delta de Burrows con dos pares de autor
+
+El corpus contiene **dos obras de Enríquez y dos de Romero**: dos oportunidades
+de verificar si las palabras funcionales recuperan la mano del autor, como en
+Mosteller y Wallace (1963). Versión elemental del Delta de Burrows (2002):
+tasas por mil de las 150 palabras más frecuentes (con vacías incluidas:
+la firma vive en ellas), estandarizadas, distancia Manhattan media.
+
+```{r delta}
+mfw <- mensajes_pal_limpio %>%
+  count(palabra, sort = TRUE) %>%
+  slice_max(n, n = 150, with_ties = FALSE) %>%
+  pull(palabra)
+
+tasas <- mensajes_pal_limpio %>%
+  count(textos_archivo, palabra) %>%
+  group_by(textos_archivo) %>%
+  mutate(tasa = 1000 * n / sum(n)) %>%
+  ungroup() %>%
+  filter(palabra %in% mfw) %>%
+  select(textos_archivo, palabra, tasa) %>%
+  pivot_wider(names_from = palabra, values_from = tasa, values_fill = 0) %>%
+  column_to_rownames("textos_archivo")
+
+delta <- as.matrix(dist(scale(tasas), method = "manhattan")) / length(mfw)
+
+vecinos <- tibble(
+  texto  = rownames(delta),
+  vecino_mas_proximo = apply(delta, 1, function(x) names(sort(x))[2]),
+  delta  = apply(delta, 1, function(x) round(sort(x)[2], 3)))
+
+knitr::kable(vecinos,
+             caption = "Delta de Burrows (150 MFW): vecino estilístico más próximo de cada obra")
+```
+
+> **[COMPLETAR tras tejer]** La pregunta binaria: ¿cada Enríquez tiene como
+> vecina a la otra Enríquez, y cada Romero al otro Romero? Si sí, el resultado
+> de la ejercitación (Díaz de Guzmán reconociéndose a sí mismo) se replica por
+> partida doble sobre narrativa contemporánea. Si no, aplicar las cautelas de
+> *contextualidad*: género, extensión y ruido de OCR (Ferrari) también mueven
+> los perfiles funcionales. Cualquiera de los dos resultados es material para
+> la memoria.
+
+---
+
+## 6. Conclusiones
+
+> **[COMPLETAR tras tejer — es la sección de autoría plena]** Tres preguntas
+> que el TIM espera ver respondidas con estos resultados: (1) ¿qué muestra la
+> lectura distante del corpus weird que la lectura cercana no había
+> formalizado?; (2) ¿en qué coinciden y en qué divergen R y Voyant sobre el
+> mismo corpus con el mismo filtro?; (3) ¿qué límites del proceso (OCR,
+> datificación, tamaño del corpus) condicionan estas cifras?
+
+---
+
+## Bibliografía
+
+Burrows, J. (2002). 'Delta': a Measure of Stylistic Difference and a Guide to
+Likely Authorship. *Literary and Linguistic Computing*, 17(3), 267–287.
+
+De León, R. *Primeros pasos en el análisis textual en RStudio* (guía de la
+Unidad 2) e *Introducción al análisis textual estadístico* (material teórico
+del módulo).
+
+Mosteller, F., & Wallace, D. L. (1963). Inference in an Authorship Problem.
+*Journal of the American Statistical Association*, 58(302), 275–309.
+
+Sano, Y., Takayasu, H., & Takayasu, M. (2012). Zipf's Law and Heaps' Law Can
+Predict the Size of Potential Words. *Progress of Theoretical Physics
+Supplement*, 194, 202–209.
